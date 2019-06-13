@@ -43,6 +43,8 @@ load_evm_key()
     KEYBLOB=$(cat ${EVMKEYPATH})
 
     # load the EVM encrypted key
+    keyctl link @u @s
+
     EVMKEYID=$(keyctl add ${EVMKEYTYPE} ${EVMKEYDESC} "load ${KEYBLOB}" @u)
     [ $? -eq 0 ] || {
         info "integrity: failed to load the EVM encrypted key: ${EVMKEYDESC}";
