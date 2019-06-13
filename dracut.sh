@@ -213,6 +213,9 @@ Creates initial ramdisk images for preloading modules
                         kernel combined
   --uefi-stub [FILE]    Use the UEFI stub [FILE] to create an UEFI executable
   --kernel-image [FILE] location of the kernel image
+  -e, --file-metadata [TYPE]
+                        Include file metadata in the initramfs. Specify "xattr"
+                        to include file extended attributes.
 
 If [LIST] has multiple arguments, then you have to put these in quotes.
 
@@ -286,7 +289,7 @@ rearrange_params()
     set -- "${@/%-i/++include}"
 
     TEMP=$(unset POSIXLY_CORRECT; getopt \
-        -o "a:m:o:d:I:k:c:L:fvqlHhMN" \
+        -o "a:m:o:d:I:k:c:L:fvqlHhMNe:" \
         --long kver: \
         --long add: \
         --long force-add: \
@@ -372,6 +375,7 @@ rearrange_params()
         --long no-hostonly-i18n \
         --long hostonly-i18n \
         --long no-machineid \
+        --long file-metadata: \
         -- "$@")
 
     if (( $? != 0 )); then
@@ -569,6 +573,8 @@ while :; do
                        kernel_image_l="$2";            PARMS_TO_STORE+=" '$2'"; shift;;
         --no-machineid)
                        machine_id_l="no";;
+        -e|--file-metadata)
+                       file_metadata_l="$2";           PARMS_TO_STORE+=" '$2'"; shift;;
         --) shift; break;;
 
         *)  # should not even reach this point
@@ -739,6 +745,7 @@ stdloglvl=$((stdloglvl + verbosity_mod_l))
 [[ $uefi_stub_l ]] && uefi_stub="$uefi_stub_l"
 [[ $kernel_image_l ]] && kernel_image="$kernel_image_l"
 [[ $machine_id_l ]] && machine_id="$machine_id_l"
+[[ $file_metadata_l ]] && file_metadata_opt="-e $file_metadata_l"
 
 if ! [[ $outfile ]]; then
     if [[ $machine_id != "no" ]]; then
@@ -1735,7 +1742,7 @@ if [[ $create_early_cpio = yes ]]; then
     if ! (
             umask 077; cd "$early_cpio_dir/d"
             find . -print0 | sort -z \
-                | cpio ${CPIO_REPRODUCIBLE:+--reproducible} --null $cpio_owner_root -H newc -o --quiet > "${DRACUT_TMPDIR}/initramfs.img"
+                | cpio ${CPIO_REPRODUCIBLE:+--reproducible} --null $cpio_owner_root -H newc $file_metadata_opt -o --quiet > "${DRACUT_TMPDIR}/initramfs.img"
         ); then
         dfatal "dracut: creation of $outfile failed"
         exit 1
@@ -1745,7 +1752,7 @@ fi
 if ! (
         umask 077; cd "$initdir"
         find . -print0 | sort -z \
-            | cpio ${CPIO_REPRODUCIBLE:+--reproducible} --null $cpio_owner_root -H newc -o --quiet \
+            | cpio ${CPIO_REPRODUCIBLE:+--reproducible} --null $cpio_owner_root -H newc $file_metadata_opt -o --quiet \
             | $compress >> "${DRACUT_TMPDIR}/initramfs.img"
     ); then
     dfatal "dracut: creation of $outfile failed"
